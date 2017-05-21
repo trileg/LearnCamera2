@@ -4,6 +4,8 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.databinding.DataBindingUtil;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
@@ -37,6 +39,7 @@ import android.widget.Toast;
 
 import net.trileg.learncamera2.databinding.ActivityMainBinding;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
@@ -52,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
 
   private Size previewSize;
   private CameraDevice cameraDevice;
+  private CameraCharacteristics cameraCharacteristics;
   private CaptureRequest.Builder previewBuilder;
   private CameraCaptureSession previewSession;
   private ImageReader previewImageReader;
@@ -239,12 +243,12 @@ public class MainActivity extends AppCompatActivity {
     try {
       numberOfCameras = manager.getCameraIdList().length;
 
-      CameraCharacteristics characteristics = manager.getCameraCharacteristics(currentCameraId);
-      isCameraFacing = characteristics.get(CameraCharacteristics.LENS_FACING) == CameraMetadata.LENS_FACING_FRONT;
+      cameraCharacteristics = manager.getCameraCharacteristics(currentCameraId);
+      isCameraFacing = cameraCharacteristics.get(CameraCharacteristics.LENS_FACING) == CameraMetadata.LENS_FACING_FRONT;
       configureTransform(binding.cameraTextureView.getWidth(), binding.cameraTextureView.getHeight());
 
       // ストリームの設定を取得（出力サイズを取得する）
-      StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+      StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
       Size[] sizes = map.getOutputSizes(ImageFormat.JPEG);
 
       // sizes配列から最大の組み合わせを取得する
@@ -309,6 +313,7 @@ public class MainActivity extends AppCompatActivity {
     SurfaceTexture texture = binding.cameraTextureView.getSurfaceTexture();
     if (texture == null) return;
 
+    previewImageReader.setOnImageAvailableListener(imageAvailableListener, backgroundHandler);
     texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
     Surface surface = new Surface(texture);
 
@@ -346,14 +351,66 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void takePhoto() {
+    if (cameraDevice == null || previewSession == null) return;
 
+    try {
+      final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+      captureBuilder.addTarget(previewImageReader.getSurface());
+      setCameraMode(captureBuilder);
+
+      captureBuilder.set(CaptureRequest.JPEG_ORIENTATION,
+                         getJpegOrientation());
+
+      previewSession.stopRepeating();
+
+      previewSession.capture(captureBuilder.build(), null, null);
+    } catch (CameraAccessException e) {
+      e.printStackTrace();
+    }
   }
+
 
   private final ImageReader.OnImageAvailableListener imageAvailableListener = new ImageReader.OnImageAvailableListener() {
 
     @Override
     public void onImageAvailable(ImageReader reader) {
+      capturedImage = reader.acquireLatestImage();
 
+      backgroundHandler.post(new Runnable() {
+        @Override
+        public void run() {
+          ByteBuffer byteBuffer = capturedImage.getPlanes()[0].getBuffer();
+          byte[] bytes = new byte[byteBuffer.capacity()];
+          byteBuffer.get(bytes);
+
+          Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+
+          Matrix matrix = new Matrix();
+
+          if (isCameraFacing) {
+            matrix.preScale(-1.0f, 1.0f);
+            matrix.postRotate(270.f);
+          } else {
+            matrix.postRotate(90.f);
+          }
+
+          bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+
+          float cropWidthRatio = (float) binding.activityMainRalative.getMeasuredWidth() / (float) binding.cameraTextureView.getMeasuredWidth();
+          int cropWidth = (int) (bitmap.getWidth() - (bitmap.getWidth() * cropWidthRatio));
+
+          float cropHeightRatio = (float) binding.activityMainRalative.getMeasuredWidth() / (float) binding.cameraTextureView.getMeasuredHeight();
+          int cropHeight = (int) (bitmap.getHeight() - (bitmap.getHeight() * cropHeightRatio));
+
+          bitmap = Bitmap.createBitmap(bitmap, 0, cropHeight / 2, bitmap.getWidth() - cropWidth, bitmap.getHeight() - cropHeight);
+
+          if (cameraDevice == null) prepareCameraView(binding.cameraTextureView.getWidth(),
+                                                      binding.cameraTextureView.getHeight());
+          else createCameraPreviewSession();
+
+          capturedImage.close();
+        }
+      });
     }
   };
 
@@ -408,6 +465,18 @@ public class MainActivity extends AppCompatActivity {
 
   private void setCameraMode(CaptureRequest.Builder requestBuilder) {
     requestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+  }
+
+  private int getJpegOrientation() {
+    if (lastOrientationNum == -1) return 0;
+
+    int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+
+    int deviceOrientation = (lastOrientationNum + 45) / 90 * 90;
+
+    if (isCameraFacing) deviceOrientation = -deviceOrientation;
+
+    return (sensorOrientation + deviceOrientation + 360) % 360;
   }
 
   private void closeCamera() {
