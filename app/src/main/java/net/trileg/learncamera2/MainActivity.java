@@ -439,23 +439,23 @@ public class MainActivity extends AppCompatActivity {
 
           matrix.postScale(scale, scale, centerX, centerY);
 
-          // Nexus 6Pの場合は，以下を使う
-          if (Build.MODEL.contains("6P")) {
-            if (isCameraFacing) matrix.postRotate(90 * displayRotationNum, centerX, centerY);
-            else matrix.postRotate((90 * (displayRotationNum + 2)) % 360, centerX, centerY);
-          } else {
+          // Nexus 5Xの場合は，以下を使う
+          if (Build.MODEL.contains("Nexus 5X")) {
             // ROTATION_90: 270度回転，ROTATION_270: 90度回転
             matrix.postRotate((90 * (displayRotationNum + 2)) % 360, centerX, centerY);
+          } else {
+            if (isCameraFacing) matrix.postRotate(90 * displayRotationNum, centerX, centerY);
+            else matrix.postRotate((90 * (displayRotationNum + 2)) % 360, centerX, centerY);
           }
         } else {
-          // Nexus 6Pの場合は，以下を使う
-          if (Build.MODEL.contains("6P")) {
+          // Nexus 5Xの場合は，以下を使う
+          if (Build.MODEL.contains("Nexus 5X")) {
+            // ROTATION_0: 0度回転，ROTATION_180: 180度回転
+            matrix.postRotate(90 * displayRotationNum, centerX, centerY);
+          } else {
             if (isCameraFacing)
               matrix.postRotate((90 * (displayRotationNum + 2)) % 360, centerX, centerY);
             else matrix.postRotate(90 * displayRotationNum, centerX, centerY);
-          } else {
-            // ROTATION_0: 0度回転，ROTATION_180: 180度回転
-            matrix.postRotate(90 * displayRotationNum, centerX, centerY);
           }
         }
         binding.cameraTextureView.setTransform(matrix);
