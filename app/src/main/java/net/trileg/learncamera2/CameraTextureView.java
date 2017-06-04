@@ -32,19 +32,35 @@ public class CameraTextureView extends TextureView {
 
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
     int width = MeasureSpec.getSize(widthMeasureSpec);
     int height = MeasureSpec.getSize(heightMeasureSpec);
+    int fixedWidth, fixedHeight;
+    float ratio;
 
     if (ratioWidth == 0 || ratioHeight == 0) {
-      setMeasuredDimension(width, height);
+      fixedWidth = width;
+      fixedHeight = height;
     } else {
       if (width > height) {
-        setMeasuredDimension(width, width * ratioHeight / ratioWidth);
+        // landscape
+        ratio = (float) ratioHeight / ratioWidth;
+        fixedWidth = width;
+        fixedHeight = (int) (width * ratio);
       } else {
-        setMeasuredDimension(height * ratioWidth / ratioHeight, height);
+        // portrait
+        ratio = (float) ratioWidth / ratioHeight;
+        fixedWidth = (int) (height * ratio);
+        fixedHeight = height;
       }
     }
+
+    setMeasuredDimension(fixedWidth, fixedHeight);
+
+    int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+    int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+    widthMeasureSpec = MeasureSpec.makeMeasureSpec(fixedWidth, widthMode);
+    heightMeasureSpec = MeasureSpec.makeMeasureSpec(fixedHeight, heightMode);
+
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
   }
 }
