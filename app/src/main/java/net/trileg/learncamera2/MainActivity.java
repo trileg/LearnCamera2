@@ -396,13 +396,10 @@ public class MainActivity extends AppCompatActivity {
 
           bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
 
-          float cropWidthRatio = (float) binding.activityMainRalative.getMeasuredWidth() / (float) binding.cameraTextureView.getMeasuredWidth();
-          int cropWidth = (int) (bitmap.getWidth() - (bitmap.getWidth() * cropWidthRatio));
+          float bitmapTextureRatio = (float) bitmap.getHeight() / (float) binding.cameraTextureView.getMeasuredHeight();
+          int cropCoverTopHeight = (int) (binding.topCoverView.getMeasuredHeight() * bitmapTextureRatio);
 
-          float cropHeightRatio = (float) binding.activityMainRalative.getMeasuredWidth() / (float) binding.cameraTextureView.getMeasuredHeight();
-          int cropHeight = (int) (bitmap.getHeight() - (bitmap.getHeight() * cropHeightRatio));
-
-          bitmap = Bitmap.createBitmap(bitmap, 0, cropHeight / 2, bitmap.getWidth() - cropWidth, bitmap.getHeight() - cropHeight);
+          bitmap = Bitmap.createBitmap(bitmap, 0, cropCoverTopHeight, bitmap.getWidth(), bitmap.getWidth());
 
           if (cameraDevice == null) prepareCameraView(binding.cameraTextureView.getWidth(),
                                                       binding.cameraTextureView.getHeight());
