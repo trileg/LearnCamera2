@@ -274,7 +274,7 @@ public class MainActivity extends AppCompatActivity {
       final float aspectRatio = ((float) maxImageSize.getHeight() / (float) maxImageSize.getWidth());
 
       int maxWidth = TEXTURE_VIEW_MAX_WIDTH, maxHeight = TEXTURE_VIEW_MAX_HEIGHT;
-      Size setSize = new Size(0, 0);
+      Size setSize = new Size(maxWidth, maxHeight);
       for (Size size : sizes) {
         if (size.getWidth() <= maxWidth && size.getHeight() <= maxHeight && size.getHeight() == (size.getWidth() * aspectRatio)) {
           if (setSize.getWidth() <= size.getWidth()) setSize = size;
